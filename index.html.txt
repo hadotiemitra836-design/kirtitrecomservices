@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HADOTI E MITRA SERVICES - Online Portal</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        /* Custom CSS for Cyber Cafe/Tech Aesthetic and Animations */
+        :root {
+            --sky-blue: #7dd3fc; /* Tailwind sky-300 */
+            --yellow-accent: #facc15; /* Tailwind yellow-400 */
+            --rose-dark: #3f093f;
+            --rose-light: #5a115a;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Deep rose/purple gradient background for a tech feel */
+            background-color: var(--rose-dark);
+            min-height: 100vh;
+            color: #d1d5db; /* Default text color (gray-300) */
+            
+            /* Impressive Animated Background */
+            background-image: linear-gradient(135deg, var(--rose-dark) 0%, var(--rose-light) 100%);
+            animation: backgroundFlow 60s infinite alternate;
+        }
+
+        @keyframes backgroundFlow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Animation for Business Name & Mobile (Subtle pulse/glow in sky blue) */
+        @keyframes glowPulse {
+            0%, 100% { text-shadow: 0 0 5px var(--sky-blue), 0 0 10px var(--sky-blue); }
+            50% { text-shadow: 0 0 10px var(--sky-blue), 0 0 20px rgba(125, 211, 252, 0.6); }
+        }
+        .text-glow-sky {
+            animation: glowPulse 2s infinite ease-in-out;
+            color: var(--sky-blue);
+        }
+
+        /* Animation for Address (Sliding left to right) */
+        @keyframes slideInLeft {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-address {
+            animation: slideInLeft 1s ease-out 0.5s forwards;
+            color: var(--yellow-accent);
+            opacity: 0; /* Start invisible */
+            padding-left: 0.5rem;
+        }
+        
+        /* Item Glow Effect for Cyber Look */
+        .item-glow {
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        .item-glow:hover {
+            box-shadow: 0 0 15px rgba(125, 211, 252, 0.5); /* Sky Blue Glow on hover */
+            border-color: var(--sky-blue);
+        }
+        
+        /* Custom scrollbar for tech feel */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        
+        .news-item { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="p-4 md:p-8">
+        <!-- Application content will be rendered here by JavaScript -->
+    </div>
+
+    <script>
+        const businessData = {
+            name: "HADOTI E MITRA SERVICES",
+            address: "SARASWATI COLONY KOTA JUNCTION KOTA",
+            mobiles: ["9461934836", "8764797672"],
+            email: "hadotiemitra836@gmail.com",
+            admin: {
+                username: "TR778523",
+                password: "Dunja@786"
+            },
+            
+            // Mock data with required 'site links' (externalLink)
+            jobs: [
+                { id: 1, title: "SSC MTS Recruitment 2024", date: "20 Nov 2024", lastDate: "15 Dec 2024", externalLink: "https://mock-jobs-ssc.com" },
+                { id: 2, title: "Rajasthan Police Constable Vacancy", date: "10 Nov 2024", lastDate: "05 Dec 2024", externalLink: "https://mock-jobs-police.com" },
+                { id: 3, title: "IBPS PO/MT XII Online Form", date: "01 Nov 2024", lastDate: "21 Nov 2024", externalLink: "https://mock-jobs-ibps.com" },
+            ],
+            exams: [
+                { title: "REET 2024 Exam Date Announced", status: "Upcoming", date: "10 Feb 2025", externalLink: "https://mock-exams-reet.com" },
+                { title: "Railway Group D Phase IV Schedule", status: "Running", date: "25 Nov 2024 - 5 Dec 2024", externalLink: "https://mock-exams-railway.com" },
+                { title: "UPSC Civil Services Prelims 2025 Notification", status: "New", date: "Check Details", externalLink: "https://mock-exams-upsc.com" },
+            ],
+            results: [
+                { title: "JEE Main 2024 Session 2 Result", status: "Available", date: "25 Nov 2024", externalLink: "https://mock-results-jee.com" },
+                { title: "RPSC RAS Pre Exam Result 2024", status: "Available", date: "18 Nov 2024", externalLink: "https://mock-results-ras.com" },
+                { title: "CBSE Class 12 Compartment Result", status: "Available", date: "10 Nov 2024", externalLink: "https://mock-results-cbse.com" },
+            ]
+        };
+
+        let isAuthenticated = false;
+        let currentPage = 'home'; 
+        const appDiv = document.getElementById('app');
+
+        // --- GEMINI API CONFIGURATION ---
+        const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
+        const API_KEY = ""; 
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`;
+        // --- END GEMINI API CONFIGURATION ---
+
+        /**
+         * Calls the Gemini API to generate content.
+         * Implements exponential backoff for retries.
+         */
+        const fetchWithGemini = async (userQuery, systemPrompt, maxRetries = 5) => {
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                        return text || "Error: Could not extract generated text from response.";
+                    } else if (response.status === 429 && i < maxRetries - 1) {
+                        // Rate limit error (429) - wait and retry
+                        const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        // Continue loop to retry
+                    } else {
+                        // Other non-retryable error
+                        throw new Error(`API returned status ${response.status}: ${response.statusText}`);
+                    }
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        console.error("Gemini API call failed after max retries:", error);
+                        return `Error: Failed to connect to AI assistant. Please try again later. (${error.message})`;
+                    }
+                    // Handle network errors or JSON parsing errors (will be caught in the outer try-catch)
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+            return "Error: Exceeded maximum retry attempts.";
+        };
+
+
+        // -----------------------------------------------------------
+        // RENDER FUNCTIONS
+        // -----------------------------------------------------------
+
+        const renderHeader = () => {
+            const mobileHtml = businessData.mobiles.map(num =>
+                /* Ensure mobile numbers are sky blue and linkable */
+                `<a href="tel:${num}" class="hover:text-white transition duration-300">${num}</a>`
+            ).join(' | ');
+
+            const navItems = [
+                { page: 'home', label: 'Home / E-Mitra Services', color: 'sky' },
+                { page: 'jobs', label: 'Current Jobs', color: 'green' },
+                { page: 'exams', label: 'Examinations', color: 'fuchsia' },
+                { page: 'results', label: 'Results', color: 'cyan' },
+                { page: 'admin-login', label: 'Admin Login', color: 'yellow', isSpecial: true }
+            ];
+
+            const navButtons = navItems.map(item => {
+                const isActive = currentPage === item.page || (item.page === 'admin-login' && currentPage === 'admin-dashboard');
+                const baseClasses = item.isSpecial ? 
+                    `bg-${item.color}-600 hover:bg-${item.color}-500` : 
+                    `bg-gray-700 hover:bg-${item.color}-700`;
+                const activeClasses = `bg-${item.color}-600 hover:bg-${item.color}-500 shadow-lg shadow-${item.color}-900/50`;
+                
+                return `
+                    <button onclick="navigate('${item.page}')" 
+                            class="py-2 px-4 md:px-6 rounded-full text-white font-semibold text-sm transition duration-300 shadow-md ${isActive ? activeClasses : baseClasses}">
+                        ${item.label}
+                    </button>
+                `;
+            }).join('');
+
+
+            return `
+                <header class="text-center mb-10 p-6 bg-gray-900/70 backdrop-blur-sm rounded-lg shadow-2xl border-b border-sky-600/50">
+                    <!-- Business Name & Mobile (Sky Blue, Animated) -->
+                    <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight text-glow-sky mb-2">
+                        ${businessData.name}
+                    </h1>
+                    <p class="text-sm md:text-lg font-medium text-gray-300 mb-4 text-glow-sky">
+                        Call Us: ${mobileHtml}
+                        <span class="mx-2 text-gray-500">|</span>
+                        Email: <a href="mailto:${businessData.email}" class="hover:text-white transition duration-300">${businessData.email}</a>
+                    </p>
+
+                    <!-- Address (Yellow, Sliding) -->
+                    <div class="overflow-hidden h-6 mt-4 flex justify-center">
+                        <p class="text-sm md:text-base font-semibold slide-address">
+                            ${businessData.address}
+                        </p>
+                    </div>
+                    
+                    <!-- Navigation Buttons -->
+                    <div class="mt-8 flex flex-wrap justify-center gap-2 md:gap-4">
+                        ${navButtons}
+                    </div>
+                </header>
+            `;
+        };
+
+        /**
+         * Renders the Jobs, Exams, and Results sections, using externalLink.
+         */
+        const renderInfoSection = (data, title, buttonText, buttonColor, isJobsPage = false) => {
+            const listItems = data.map((item, index) => {
+                const llmButton = isJobsPage ? `
+                    <button onclick="draftApplicationEmail('${item.title}')" 
+                            class="flex items-center space-x-1 py-1 px-3 text-sm font-bold rounded-full bg-fuchsia-600 text-white hover:bg-fuchsia-500 transition duration-300 shadow-md flex-shrink-0 ml-4 mb-2">
+                        <span class="text-lg">✨</span>
+                        <span>AI Draft</span>
+                    </button>
+                ` : '';
+
+                return `
+                    <li class="p-4 bg-gray-800 rounded-lg flex justify-between items-start transition duration-300 hover:bg-gray-700 news-item item-glow border border-gray-700" style="animation-delay: ${index * 0.1}s;">
+                        <div class="flex-grow pr-4">
+                            <h3 class="text-lg font-semibold text-white hover:text-${buttonColor}-400 transition duration-200">${item.title}</h3>
+                            ${item.lastDate ? `<p class="text-xs text-gray-400 mt-1">Last Date: ${item.lastDate}</p>` : ''}
+                            ${item.date ? `<p class="text-xs text-gray-400 mt-1">Date: ${item.date}</p>` : ''}
+                        </div>
+                        <div class="flex flex-col space-y-2 ml-4 flex-shrink-0">
+                            ${llmButton}
+                            <a href="${item.externalLink}" target="_blank" class="flex-shrink-0 py-2 px-3 text-sm font-bold text-center rounded-lg bg-${buttonColor}-600 text-white hover:bg-${buttonColor}-500 transition duration-300 shadow-lg">
+                                ${buttonText}
+                            </a>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+
+            return `
+                <main class="py-6">
+                    <h2 class="text-3xl font-bold text-white mb-6 border-b border-${buttonColor}-700 pb-2">${title}</h2>
+                    <ul class="space-y-4">
+                        ${listItems}
+                        <li class="text-center pt-4">
+                            <a href="#" class="text-${buttonColor}-400 hover:text-${buttonColor}-300 transition duration-300 font-medium">
+                                View Older Notifications →
+                            </a>
+                        </li>
+                    </ul>
+                </main>
+            `;
+        };
+        
+        // New Section Renders incorporating the LLM modal for Jobs
+        const renderJobs = () => {
+            return renderInfoSection(businessData.jobs, "Current Jobs & Vacancies", "View Site Link", "green", true) + `
+                <!-- LLM Output Modal for Job Drafting -->
+                <div id="llm-draft-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50" onclick="closeLLMModal(event)">
+                    <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-3xl w-full border border-fuchsia-600 item-glow" onclick="event.stopPropagation()">
+                        <h3 class="text-2xl font-bold text-fuchsia-400 mb-4 flex items-center">
+                            <span class="text-3xl mr-2 animate-pulse">✨</span> AI Application Draft Generator
+                        </h3>
+                        <p id="llm-job-title" class="text-sm text-gray-400 mb-4 border-b border-gray-700 pb-2"></p>
+                        
+                        <div id="llm-output-container" class="bg-gray-900/90 p-4 rounded-lg min-h-[150px] max-h-[50vh] overflow-y-auto border border-fuchsia-800">
+                            <p id="llm-draft-content" class="text-white whitespace-pre-wrap"></p>
+                            <div id="llm-loading" class="hidden text-center text-fuchsia-300">
+                                <p class="animate-pulse flex items-center justify-center space-x-2">
+                                    <svg class="animate-spin h-5 w-5 text-fuchsia-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span>Generating professional email draft...</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex space-x-4">
+                            <button onclick="copyDraftToClipboard()" id="copy-button" class="flex-1 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-500 transition duration-300 shadow-md shadow-green-900/50 disabled:opacity-50" disabled>
+                                Copy Draft
+                            </button>
+                            <button onclick="closeLLMModal()" class="flex-1 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-500 transition duration-300 shadow-md shadow-red-900/50">
+                                Close
+                            </button>
+                        </div>
+                        <p id="copy-message" class="text-center text-xs text-green-400 mt-2 hidden">Copied to clipboard! Ready to send.</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        const renderExams = () => renderInfoSection(businessData.exams, "Examination Notifications", "View Site Link", "fuchsia", false);
+        const renderResults = () => renderInfoSection(businessData.results, "Latest Results Declared", "View Site Link", "cyan", false);
+
+
+        const renderServices = () => {
+            const services = [
+                { name: "Aadhar Services", icon: "🔗", description: "Enrollment, Updates, and Printouts." },
+                { name: "PAN Card Applications", icon: "💳", description: "New applications and correction requests." },
+                { name: "Utility Bill Payments", icon: "💡", description: "Electricity, Water, Gas, and more." },
+                { name: "Passport Forms", icon: "🛂", description: "Filling and submission assistance." },
+                { name: "Scholarship Forms", icon: "🎓", description: "Online application support." },
+                { name: "Exam Form Filling", icon: "✍️", description: "All competitive and university forms." },
+                { name: "Document Printing/Scan", icon: "🖨️", description: "High-quality color printing and scanning." },
+                { name: "Digital Signature (DSC)", icon: "🛡️", description: "Issuance and renewal services." },
+            ];
+
+            const serviceBlocks = services.map(service => `
+                <a href="#" onclick="showServiceMessage('${service.name}')" class="group block p-6 bg-gray-800 rounded-xl shadow-lg border border-gray-700 hover:border-sky-500 transition duration-300 transform hover:scale-[1.02] cursor-pointer item-glow">
+                    <div class="text-3xl mb-2 group-hover:animate-pulse">${service.icon}</div>
+                    <h3 class="text-lg font-semibold text-white group-hover:text-sky-400">${service.name}</h3>
+                    <p class="text-sm text-gray-400 mt-1">${service.description}</p>
+                </a>
+            `).join('');
+
+            return `
+                <main class="py-6">
+                    <h2 class="text-2xl font-bold text-white mb-6 border-b border-sky-700 pb-2">Our Key E-Mitra Services</h2>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                        ${serviceBlocks}
+                    </div>
+                    
+                    <!-- Quick Links to New Sections -->
+                    <div class="mt-12 grid md:grid-cols-3 gap-6">
+                        ${renderQuickLinkCard('Current Jobs', businessData.jobs.length, 'jobs', 'green')}
+                        ${renderQuickLinkCard('Examinations', businessData.exams.length, 'exams', 'fuchsia')}
+                        ${renderQuickLinkCard('Results Declared', businessData.results.length, 'results', 'cyan')}
+                    </div>
+                </main>
+                <!-- Custom Message Box for mock functionality -->
+                <div id="service-message" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-2xl max-w-sm w-full border border-sky-600 item-glow">
+                        <h3 class="text-xl font-bold text-sky-400 mb-4" id="message-title"></h3>
+                        <p class="text-gray-300 mb-6" id="message-content"></p>
+                        <button onclick="closeServiceMessage()" class="w-full py-2 bg-sky-600 text-white font-semibold rounded-md hover:bg-sky-500 transition duration-300">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+        };
+        
+        const renderQuickLinkCard = (title, count, page, color) => {
+            return `
+                <div class="bg-gray-900/50 p-6 rounded-xl border border-${color}-700 shadow-xl item-glow hover:border-${color}-500 transition duration-300">
+                    <h3 class="text-xl font-bold text-${color}-400 mb-2">${title}</h3>
+                    <p class="text-5xl font-extrabold text-${color}-200">${count}+</p>
+                    <p class="text-sm text-gray-400 mt-1">Latest notifications</p>
+                    <button onclick="navigate('${page}')" class="mt-4 w-full py-2 bg-${color}-600 text-white font-semibold rounded-lg hover:bg-${color}-500 transition duration-300">
+                        Check Now →
+                    </button>
+                </div>
+            `;
+        };
+        
+        const showServiceMessage = (serviceName) => {
+            const title = document.getElementById('message-title');
+            const content = document.getElementById('message-content');
+            const messageBox = document.getElementById('service-message');
+
+            title.textContent = serviceName;
+            content.textContent = `To avail the ${serviceName} service, please visit our physical office or contact us on ${businessData.mobiles[0]}.`;
+            messageBox.classList.remove('hidden');
+        };
+
+        const closeServiceMessage = () => {
+            document.getElementById('service-message').classList.add('hidden');
+        };
+
+        // --- GEMINI SPECIFIC FUNCTIONS ---
+
+        const draftApplicationEmail = async (jobTitle) => {
+            const modal = document.getElementById('llm-draft-modal');
+            const draftContent = document.getElementById('llm-draft-content');
+            const loading = document.getElementById('llm-loading');
+            const jobTitleDisplay = document.getElementById('llm-job-title');
+            const copyButton = document.getElementById('copy-button');
+            document.getElementById('copy-message').classList.add('hidden');
+            
+            // Show modal and loading state
+            modal.classList.remove('hidden');
+            draftContent.textContent = '';
+            loading.classList.remove('hidden');
+            copyButton.disabled = true;
+            jobTitleDisplay.textContent = `Drafting application for: ${jobTitle}`;
+
+            const systemPrompt = "You are a professional and concise career assistant. Your task is to generate a formal draft email for a job application. The tone should be respectful and eager. Use clear placeholders for the applicant's personal details and qualification highlights. Structure the output as a simple email body text.";
+            const userQuery = `Draft a formal, concise application email (only the body text, no subject line needed) for the job: "${jobTitle}". The email should be addressed to 'Hiring Manager' or 'Recruitment Team' and include clear, bracketed placeholders for the sender's name, mobile number, and specific qualifications related to the role.`;
+
+            const resultText = await fetchWithGemini(userQuery, systemPrompt);
+
+            // Hide loading and display result
+            loading.classList.add('hidden');
+            draftContent.textContent = resultText;
+            copyButton.disabled = false;
+        };
+
+        const closeLLMModal = (e) => {
+            // Check if the event object exists and if the target is the modal itself (not children)
+            if (!e || e.target === document.getElementById('llm-draft-modal')) {
+                document.getElementById('llm-draft-modal').classList.add('hidden');
+            }
+        };
+
+        const copyDraftToClipboard = () => {
+            const draftContent = document.getElementById('llm-draft-content').textContent;
+            
+            // Using document.execCommand('copy') as navigator.clipboard.writeText() may fail in iframes
+            const textarea = document.createElement('textarea');
+            textarea.value = draftContent;
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    const msg = document.getElementById('copy-message');
+                    msg.classList.remove('hidden');
+                    setTimeout(() => msg.classList.add('hidden'), 2000);
+                } else {
+                    console.error('Copy command failed.');
+                }
+            } catch (err) {
+                console.error('Unable to copy', err);
+            }
+            
+            document.body.removeChild(textarea);
+        };
+
+
+        // --- AUTH & ADMIN FUNCTIONS ---
+        const handleLogin = (e) => {
+            e.preventDefault();
+            const username = document.getElementById('admin-username').value;
+            const password = document.getElementById('admin-password').value;
+            const messageBox = document.getElementById('login-message');
+
+            if (username === businessData.admin.username && password === businessData.admin.password) {
+                isAuthenticated = true;
+                messageBox.innerHTML = '<p class="text-green-400 font-semibold">Login Successful! Redirecting...</p>';
+                setTimeout(() => navigate('admin-dashboard'), 800);
+            } else {
+                messageBox.innerHTML = '<p class="text-red-400 font-semibold">Login Failed. Invalid username or password.</p>';
+            }
+        };
+
+        const renderAdminLogin = () => {
+            if (isAuthenticated) {
+                return navigate('admin-dashboard');
+            }
+
+            return `
+                <main class="flex justify-center items-start py-10 min-h-[60vh]">
+                    <div class="w-full max-w-md p-8 bg-gray-800 rounded-xl shadow-2xl border border-yellow-600/50 item-glow hover:border-yellow-300">
+                        <h2 class="text-3xl font-bold text-yellow-400 mb-6 text-center">Admin Access</h2>
+                        <form onsubmit="handleLogin(event)">
+                            <div class="mb-4">
+                                <label for="admin-username" class="block text-sm font-medium text-gray-300 mb-1">Username</label>
+                                <input type="text" id="admin-username" class="w-full p-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-yellow-500 focus:border-yellow-500" required>
+                            </div>
+                            <div class="mb-6">
+                                <label for="admin-password" class="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                                <input type="password" id="admin-password" class="w-full p-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-yellow-500 focus:border-yellow-500" required>
+                            </div>
+                            <div id="login-message" class="text-center mb-4">
+                                <!-- Message box for login status -->
+                            </div>
+                            <button type="submit" class="w-full py-3 bg-yellow-600 text-white font-bold rounded-lg hover:bg-yellow-500 transition duration-300 shadow-md shadow-yellow-800/50">
+                                Log In
+                            </button>
+                            <p class="text-xs text-gray-500 mt-4 text-center">
+                                <span class="font-bold text-yellow-500">Credentials:</span> U: TR778523 | P: Dunja@786
+                            </p>
+                        </form>
+                    </div>
+                </main>
+            `;
+        };
+
+        const renderAdminDashboard = () => {
+            if (!isAuthenticated) {
+                return navigate('admin-login');
+            }
+
+            return `
+                <main class="py-10 min-h-[60vh]">
+                    <div class="p-8 bg-gray-800 rounded-xl shadow-2xl border border-green-600/50 item-glow hover:border-green-300">
+                        <h2 class="text-3xl font-bold text-green-400 mb-6 border-b border-green-700 pb-2">Admin Dashboard - HADOTI E MITRA</h2>
+                        <div class="text-white space-y-6">
+                            <p class="text-lg">Welcome back, ${businessData.admin.username}. This is a mock administrative control panel for managing web services.</p>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div class="p-4 bg-gray-700 rounded-lg border border-sky-700">
+                                    <h3 class="text-xl font-semibold text-sky-300">Total Visitors (Today)</h3>
+                                    <p class="text-4xl font-bold mt-1">245</p>
+                                </div>
+                                <div class="p-4 bg-gray-700 rounded-lg border border-yellow-700">
+                                    <h3 class="text-xl font-semibold text-yellow-300">New Queries</h3>
+                                    <p class="text-4xl font-bold mt-1">08</p>
+                                </div>
+                                <div class="p-4 bg-gray-700 rounded-lg border border-red-700">
+                                    <h3 class="text-xl font-semibold text-red-300">System Status</h3>
+                                    <p class="text-4xl font-bold mt-1">Online</p>
+                                </div>
+                            </div>
+
+                            <div class="pt-4">
+                                <button onclick="logout()" class="py-2 px-6 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition duration-300 shadow-md">
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            `;
+        };
+
+        // -----------------------------------------------------------
+        // NAVIGATION & MAIN RENDER LOOP
+        // -----------------------------------------------------------
+
+        const logout = () => {
+            isAuthenticated = false;
+            navigate('home');
+        };
+
+        const navigate = (page) => {
+            currentPage = page;
+            renderApp();
+            // Scroll to top on navigation change
+            window.scrollTo(0, 0);
+        };
+
+        const renderApp = () => {
+            let contentHtml = '';
+            let headerHtml = renderHeader();
+
+            switch (currentPage) {
+                case 'home':
+                    contentHtml = renderServices();
+                    break;
+                case 'jobs':
+                    contentHtml = renderJobs();
+                    break;
+                case 'exams':
+                    contentHtml = renderExams();
+                    break;
+                case 'results':
+                    contentHtml = renderResults();
+                    break;
+                case 'admin-login':
+                    contentHtml = renderAdminLogin();
+                    break;
+                case 'admin-dashboard':
+                    contentHtml = renderAdminDashboard();
+                    break;
+                default:
+                    currentPage = 'home';
+                    contentHtml = renderServices();
+            }
+
+            appDiv.innerHTML = `
+                <div class="max-w-7xl mx-auto">
+                    ${headerHtml}
+                    ${contentHtml}
+                </div>
+                <footer class="text-center py-4 mt-10 text-gray-500 text-sm border-t border-gray-800">
+                    &copy; ${new Date().getFullYear()} HADOTI E MITRA SERVICES. All rights reserved.
+                </footer>
+            `;
+        };
+
+        // Expose functions to the global scope for inline HTML event handlers
+        window.handleLogin = handleLogin;
+        window.navigate = navigate;
+        window.logout = logout;
+        window.showServiceMessage = showServiceMessage;
+        window.closeServiceMessage = closeServiceMessage;
+        window.draftApplicationEmail = draftApplicationEmail;
+        window.closeLLMModal = closeLLMModal;
+        window.copyDraftToClipboard = copyDraftToClipboard;
+
+        // Initial Render
+        window.onload = () => {
+            renderApp();
+        };
+
+    </script>
+</body>
+</html>
